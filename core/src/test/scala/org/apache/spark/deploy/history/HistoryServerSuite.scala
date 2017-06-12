@@ -326,11 +326,25 @@ class HistoryServerSuite extends SparkFunSuite with BeforeAndAfter with Matchers
 
       go to s"$url$uiRoot"
 
-      // expect the ajax call to finish in 5 seconds
-      implicitlyWait(org.scalatest.time.Span(5, org.scalatest.time.Seconds))
+	  // There is an ajax call which exceeds 5s timeout on slow machines. This results in
+      // `org.openqa.selenium.StaleElementReferenceException` or failing test (no links
+	  // rendered). Here we wrap this in 5 retries of 5 seconds
 
-      // once this findAll call returns, we know the ajax load of the table completed
-      findAll(ClassNameQuery("odd"))
+      var attempts = 0
+      while (attempts < 5) {
+        try {
+          // expect the ajax call to finish in 5 seconds
+          implicitlyWait(org.scalatest.time.Span(5, org.scalatest.time.Seconds))
+
+          // once this findAll call returns, we know the ajax load of the table completed
+          findAll(ClassNameQuery("odd"))
+        }
+        catch {
+          // scalastyle:off
+          case _ => println(s"Attempt $attempts failed")
+        }
+        attempts += 1
+      }
 
       val links = findAll(TagNameQuery("a"))
         .map(_.attribute("href"))
